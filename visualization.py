@@ -6,13 +6,12 @@ from gtda.homology import VietorisRipsPersistence
 from gtda.plotting import plot_diagram
 import plotly.offline as pyo
 import random
+from tqdm import tqdm
 
 
 def plot3D(path) -> None:
     """
-    Plots 3d point cloud (works only for .obj files)
-    :param path: path to file where 3d model is stored
-    :return: None
+    Plots 3d point cloud for .obj file with given path
     """
 
     # Load the .obj file
@@ -50,11 +49,7 @@ def plot3D(path) -> None:
 
 def makeDiagram(path, homology_dimensions=[0, 1, 2], max_edge_length=4):
     """
-    Creates persistence diagram
-    :param path: path to .obj file where 3d model is stored
-    :param homology_dimensions:
-    :param max_edge_length:
-    :return: persistence diagram
+    Creates persistence diagram from .obj file with given path
     """
     # Load the .obj file
     scene = pywavefront.Wavefront(path)
@@ -71,11 +66,25 @@ def makeDiagram(path, homology_dimensions=[0, 1, 2], max_edge_length=4):
     return diagram
 
 
+def makeDiagrams(folder_path, homology_dimensions=[0, 1, 2], max_edge_length=4):
+    """
+    Creates persistence diagrams from .obj files that are located in given folder.
+    """
+    if not os.path.exists(folder_path):
+        print(f"Folder with path: {folder_path} doesn't exist")
+
+    diagrams = []
+    for file_name in tqdm(os.listdir(folder_path)):
+        path = os.path.join(folder_path, file_name)
+        diagram = makeDiagram(path=path, homology_dimensions=homology_dimensions, max_edge_length=max_edge_length)
+        diagrams.append(diagram)
+
+    return diagrams
+
+
 def plotDiagram(diagram):
     """
-    Plots persistence diagram
-    :param diagram: persistence diagram
-    :return: None
+    Plots given persistence diagram.
     """
     fig = plot_diagram(diagram)
     pyo.plot(fig)
@@ -83,10 +92,7 @@ def plotDiagram(diagram):
 
 def saveDiagram(diagram, folder_path, file_name):
     """
-    :param diagram: persistence diagram
-    :param folder_path: folder location to save diagram
-    :param file_name: name of a file where diagram is stored
-    :return:
+    Saves given persistence diagram in given folder, with given name.
     """
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
@@ -96,14 +102,18 @@ def saveDiagram(diagram, folder_path, file_name):
     fig.write_image(path)
 
 
+def saveDiagrams(diagrams, folder_path):
+    """
+    Saves diagrams to folder with give path, If folder doesn't exist, it creates that folder.
+    """
+    for i, diagram in enumerate(diagrams):
+        saveDiagram(diagram, folder_path, f"diagram{i+1}")
+
+
 def visualizeRandomExample(aneurysm=True, plot=True, homology_dimensions=[0, 1, 2], max_edge_length=4):
     """
-    Visualizes random example with/without aneurysm, saves diagram and plots it
-     :param aneurysm: True by default - set False to visualize healthy blood vessel
-     :param plot: True by default - set False to omit plotting
-     :param max_edge_length: parameter that controls filtration
-     :param homology_dimensions: selected homologies
-     :return: None
+    Visualizes random example with/without aneurysm, saves diagram in examples folder and plots it.
+    Set aneurysm=False to get example of healthy blood vessel, and plot=False to avoid plotting.
     """
     # Select random file
     if aneurysm:
