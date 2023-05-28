@@ -65,7 +65,7 @@ def makeDiagram(path, homology_dimensions=[0, 1, 2], max_edge_length=4):
     point_cloud = getPointCloud(path)
     point_cloud = np.reshape(point_cloud, (1,) + point_cloud.shape)
     vr = VietorisRipsPersistence(homology_dimensions=homology_dimensions, max_edge_length=max_edge_length)
-    diagram = vr.fit_transform(point_cloud)[0]
+    diagram = vr.fit_transform(point_cloud)
 
     return diagram
 
