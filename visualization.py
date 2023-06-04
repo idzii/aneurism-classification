@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 from gtda.homology import VietorisRipsPersistence
-from gtda.diagrams import HeatKernel, Scaler
+from gtda.diagrams import HeatKernel, Scaler, PersistenceImage
 from gtda.plotting import plot_diagram
 import plotly.offline as pyo
 import random
@@ -79,6 +79,13 @@ def makeDiagrams(folder_path, homology_dimensions=[0, 1, 2], max_edge_length=4):
     diagrams = [vr.fit_transform(point_cloud.reshape((1,) + point_cloud.shape)) for point_cloud in tqdm(point_clouds, desc="CREATING DIAGRAMS")]
 
     return diagrams
+
+
+def makePersistenceImage(diagram, sigma=1, n_bins=100):
+    persistence_image = PersistenceImage(sigma=sigma, n_bins=n_bins)
+    persistence_image.fit_transform([diagram])
+
+    return persistence_image
 
 
 def makeHeatDiagram(diagram, sigma=0.15, n_bins=60):
