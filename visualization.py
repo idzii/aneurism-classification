@@ -9,6 +9,7 @@ import plotly.offline as pyo
 import random
 from tqdm import tqdm
 import sys
+import open3d as o3d
 
 
 def plot3D(file_path):
@@ -16,6 +17,7 @@ def plot3D(file_path):
     Plots 3d point cloud for .obj file with given path
     """
     point_cloud = getPointCloud(file_path)
+    point_cloud = normalizePointCloud(point_cloud)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -37,15 +39,26 @@ def plot3D(file_path):
     plt.show()
 
 
+def normalizePointCloud(point_cloud):
+    centroid = np.mean(point_cloud, axis=0)
+    point_cloud -= centroid
+    furthest_distance = np.max(np.sqrt(np.sum(abs(point_cloud) ** 2, axis=-1)))
+    point_cloud /= furthest_distance
+
+    return point_cloud
+
+
 def getPointCloud(file_path):
     if not os.path.exists(file_path) or not os.path.isfile(file_path):
         print(f"{file_path} is not valid file path")
         sys.exit(1)
 
-    scene = pywavefront.Wavefront(os.path.join(file_path))
-    point_cloud = scene.vertices
-    point_cloud = list(map(list, point_cloud))
-    return np.array(point_cloud)
+    tm = o3d.io.read_triangle_mesh(file_path)
+    point_cloud = tm.sample_points_uniformly(700)
+    point_cloud = np.array(point_cloud.points)
+    point_cloud = normalizePointCloud(point_cloud)
+
+    return point_cloud
 
 
 def getPointClouds(path):
@@ -53,7 +66,8 @@ def getPointClouds(path):
         print(f"{path} is not valid directory path")
         sys.exit(1)
 
-    point_clouds = [(getPointCloud(os.path.join(path, file))) for file in tqdm(os.listdir(path), desc="EXTRACTING POINT CLOUDS")]
+    point_clouds = [(getPointCloud(os.path.join(path, file))) for file in
+                    tqdm(os.listdir(path), desc="EXTRACTING POINT CLOUDS")]
     return point_clouds
 
 
@@ -63,9 +77,10 @@ def makeDiagram(path, homology_dimensions=[0, 1, 2], max_edge_length=4):
     """
     # Reshape point cloud so it fits VietorisRipsPersistence api
     point_cloud = getPointCloud(path)
+
     point_cloud = np.reshape(point_cloud, (1,) + point_cloud.shape)
     vr = VietorisRipsPersistence(homology_dimensions=homology_dimensions, max_edge_length=max_edge_length)
-    diagram = vr.fit_transform(point_cloud)[0]
+    diagram = vr.fit_transform(point_cloud)
 
     return diagram
 
@@ -76,16 +91,24 @@ def makeDiagrams(folder_path, homology_dimensions=[0, 1, 2], max_edge_length=4):
     """
     point_clouds = getPointClouds(folder_path)
     vr = VietorisRipsPersistence(homology_dimensions=homology_dimensions, max_edge_length=max_edge_length)
-    diagrams = [vr.fit_transform(point_cloud.reshape((1,) + point_cloud.shape)) for point_cloud in tqdm(point_clouds, desc="CREATING DIAGRAMS")]
+    diagrams = [vr.fit_transform(point_cloud.reshape((1,) + point_cloud.shape)) for point_cloud in
+                tqdm(point_clouds, desc="CREATING DIAGRAMS")]
 
     return diagrams
 
 
 def makePersistenceImage(diagram, sigma=1, n_bins=100):
     persistence_image = PersistenceImage(sigma=sigma, n_bins=n_bins)
-    persistence_image.fit_transform([diagram])
+    persistence_image = persistence_image.fit_transform(diagram)[0]
 
     return persistence_image
+
+
+def makePersistenceImages(folder_path, homology_dimensions=[0, 1, 2], max_edge_length=4, sigma=1, n_bins=100):
+    diagrams = makeDiagrams(folder_path=folder_path, homology_dimensions=homology_dimensions,
+                            max_edge_length=max_edge_length)
+    persistenceImages = [makePersistenceImage(diagram, sigma=sigma, n_bins=n_bins) for diagram in diagrams]
+    return persistenceImages
 
 
 def makeHeatDiagram(diagram, sigma=0.15, n_bins=60):
@@ -99,8 +122,9 @@ def makeHeatDiagram(diagram, sigma=0.15, n_bins=60):
 
 
 def makeHeatDiagrams(folder_path, homology_dimensions=[0, 1, 2], max_edge_length=4, sigma=0.15, n_bins=60):
-    diagrams = makeDiagrams(folder_path=folder_path, homology_dimensions=homology_dimensions, max_edge_length=max_edge_length)
-    heat_diagrams = [makeHeatDiagram(diagram) for diagram in diagrams]
+    diagrams = makeDiagrams(folder_path=folder_path, homology_dimensions=homology_dimensions,
+                            max_edge_length=max_edge_length)
+    heat_diagrams = [makeHeatDiagram(diagram, sigma, n_bins) for diagram in diagrams]
 
     return heat_diagrams
 
@@ -130,7 +154,7 @@ def saveDiagrams(diagrams, folder_path):
     Saves diagrams to folder with give path, If folder doesn't exist, it creates that folder.
     """
     for i, diagram in enumerate(diagrams):
-        saveDiagram(diagram, folder_path, f"diagram{i+1}")
+        saveDiagram(diagram, folder_path, f"diagram{i + 1}")
 
 
 def visualizeRandomExample(aneurysm=True, plot=True, homology_dimensions=[0, 1, 2], max_edge_length=4):
