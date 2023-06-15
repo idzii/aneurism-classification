@@ -2,23 +2,23 @@ import visualization as v
 import os
 import numpy as np
 
-def makeHeatData(max_edge_length=1):
+
+def makeHeatData(max_edge_length=0.5):
     # Create heat kernel tensors (x) and corresponding labels (y) (0 for healthy vessels/ 1 for aneurysm)
-    heat_diagrams_aneurysm = v.makeHeatDiagrams(os.path.join("IntrA", "generated", "aneurysm", "obj"),
-                                                max_edge_length=max_edge_length)
+    heat_diagrams_aneurysm1 = v.makeHeatDiagrams(os.path.join("IntrA", "generated", "aneurysm", "obj"), max_edge_length=max_edge_length)
+    heat_diagrams_aneurysm2 = v.makeHeatDiagrams(os.path.join("IntrA", "annotated", "obj"), max_edge_length=max_edge_length)
 
-    x = np.array(heat_diagrams_aneurysm)
-    y = np.ones(len(heat_diagrams_aneurysm))
+    x = np.concatenate((heat_diagrams_aneurysm1, heat_diagrams_aneurysm2))
+    y = np.ones(len(heat_diagrams_aneurysm1)+len(heat_diagrams_aneurysm2))
 
-    heat_diagrams_healthy = v.makeHeatDiagrams(os.path.join("IntrA", "generated", "vessel", "obj"),
-                                               max_edge_length=max_edge_length)
+    heat_diagrams_healthy = v.makeHeatDiagrams(os.path.join("IntrA", "generated", "vessel", "obj"), max_edge_length=max_edge_length)
 
     x = np.append(x, heat_diagrams_healthy)
-    x = np.reshape(x, (-1,) + heat_diagrams_aneurysm[0].shape[1:])
+    x = np.reshape(x, (-1,) + heat_diagrams_aneurysm1[0].shape[1:])
     y = np.append(y, np.zeros(len(heat_diagrams_healthy)))
 
-    if not os.path.exists("data"):
-        os.makedirs("data")
+    if not os.path.exists(os.path.join("data", "heat")):
+        os.makedirs(os.path.join("data", "heat"))
 
     np.save(os.path.join("data", "heat", "heat_kernel_tensors.npy"), x)
     np.save(os.path.join("data", "heat", "labels.npy"), y)
@@ -27,47 +27,42 @@ def makeHeatData(max_edge_length=1):
 def makeImageData(max_edge_length=1):
     # Create heat kernel tensors (x) and corresponding labels (y) (0 for healthy vessels/ 1 for aneurysm)
     persistence_images_aneurysm = v.makePersistenceImages(os.path.join("IntrA", "generated", "aneurysm", "obj"),
-                                                max_edge_length=max_edge_length)
+                                                          max_edge_length=max_edge_length)
 
     x = np.array(persistence_images_aneurysm)
     y = np.ones(len(persistence_images_aneurysm))
 
     persistence_images_healthy = v.makePersistenceImages(os.path.join("IntrA", "generated", "vessel", "obj"),
-                                               max_edge_length=max_edge_length)
+                                                         max_edge_length=max_edge_length)
 
     x = np.append(x, persistence_images_healthy)
     x = np.reshape(x, (-1,) + persistence_images_aneurysm[0].shape[1:])
     y = np.append(y, np.zeros(len(persistence_images_healthy)))
 
-    if not os.path.exists("data"):
-        os.makedirs("data")
+    if not os.path.exists(os.path.join("data", "image")):
+        os.makedirs(os.path.join("data", "image"))
 
-    np.save(os.path.join("data", "images", "persistence_images.npy"), x)
-    np.save(os.path.join("data", "images", "labels.npy"), y)
-
-
-def resample(X, y):
-    aneurysm_indices = np.where(y == 1)[0]
-    healthy_indices = np.where(y == 0)[0]
-    majority_count = len(healthy_indices)
-    minority_count = len(aneurysm_indices)
-
-    factor = majority_count // minority_count
-    new_X = X[healthy_indices]
-    new_y = y[healthy_indices]
-
-    for i in range(factor):
-        new_X = np.concatenate((new_X, X[aneurysm_indices]), axis=0)
-        new_y = np.concatenate((new_y, y[aneurysm_indices]), axis=0)
-
-    indices = np.arange(len(new_y))
-    np.random.shuffle(indices)
-    new_X.reshape((-1, 60, 60))
-
-    return new_X[indices], new_y[indices]
+    np.save(os.path.join("data", "image", "persistence_images.npy"), x)
+    np.save(os.path.join("data", "image", "labels.npy"), y)
 
 
-def loadData():
-    x = np.load(os.path.join("data", "heat_kernel_tensors.npy"))
-    y = np.load(os.path.join("data", "labels.npy"))
-    return x, y
+def saveImage(image, folder_path, file_name):
+    """
+    Saves given persistence image in given folder, with given name.
+    """
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
+    fig = image.plot()
+    path = os.path.join(folder_path, file_name + ".png")
+    fig.write_image(path)
+
+
+
+def loadData(data_type="heat"):
+    if data_type == "heat":
+        x = np.load(os.path.join("data", data_type, "heat_kernel_tensors.npy"))
+        y = np.load(os.path.join("data", data_type, "labels.npy"))
+        return x, y
+
+
