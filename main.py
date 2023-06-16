@@ -5,7 +5,7 @@ import visualization
 import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
-    data.makeHeatData(0.5)
+    data.makeHeatData(0.7)
     X, y = data.loadData()
     # heatDiagrams = visualization.makeHeatDiagrams("small_data/aneurysm", max_edge_length=0.5, sigma=0.15, n_bins=100)
     # for diagram in heatDiagrams:

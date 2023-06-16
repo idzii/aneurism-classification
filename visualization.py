@@ -54,7 +54,7 @@ def getPointCloud(file_path):
         sys.exit(1)
 
     tm = o3d.io.read_triangle_mesh(file_path)
-    point_cloud = tm.sample_points_uniformly(700)
+    point_cloud = tm.sample_points_uniformly(400)
     point_cloud = np.array(point_cloud.points)
     point_cloud = normalizePointCloud(point_cloud)
 
